@@ -1,0 +1,15 @@
+[2026-04-14 20:03:41] [INFO] === Expense Splitter Server ===
+[2026-04-14 20:03:41] [INFO] TCP server listening on port 54000
+[2026-04-14 20:03:41] [INFO] WebSocket bridge listening on port 54001
+[2026-04-14 20:03:41] [INFO] Receipt directory: D:\PROJECTS\PROJ IV\ExpenseSplitter-TS\server\receipts
+[2026-04-14 20:03:41] [INFO] Demo users: jino@test.com, yashika@test.com, alice@test.com, bob@test.com (pass: pass123)
+[2026-04-14 21:01:26] [INFO] WebSocket client connected: ws_1
+[2026-04-14 21:01:43] [INFO] User logged in: jino@test.com (ws_1)
+[2026-04-14 21:04:24] [INFO] Group created: 17th Concert (grp_1) by jino@test.com
+[2026-04-14 21:05:33] [STATE] IDLE -> IN_GROUP (trigger: CMD_SELECT_GROUP groupId=grp_1 [user=jino@test.com])
+[2026-04-14 21:05:39] [STATE] IN_GROUP -> PROCESSING_EXPENSE (trigger: CMD_ADD_EXPENSE [user=jino@test.com])
+[2026-04-14 21:05:39] [INFO] Expense added: $45.00 by jino@test.com in grp_1
+[2026-04-14 21:05:39] [STATE] PROCESSING_EXPENSE -> IN_GROUP (trigger: ADD_EXPENSE_COMPLETE id=1 [user=jino@test.com])
+[2026-04-14 21:11:48] [STATE] IN_GROUP -> IDLE (trigger: CMD_LEAVE_GROUP from grp_1 [user=jino@test.com])
+[2026-04-14 21:16:59] [INFO] WebSocket client connected: ws_2
+[2026-04-14 21:17:05] [INFO] User logged in: jino@test.com (ws_2)
