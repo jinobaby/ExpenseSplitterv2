@@ -323,23 +323,25 @@ function handleRequestReceipt(session: ClientSession, params: any): void {
     const filename = params.filename || '';
     if (!filename) { sendError(session, CommandType.CMD_REQUEST_RECEIPT, StatusCode.BAD_REQUEST, 'Missing filename'); return; }
 
-    const filepath = path.join(RECEIPT_DIR, filename);
-    if (!fs.existsSync(filepath)) {
-        sendError(session, CommandType.CMD_REQUEST_RECEIPT, StatusCode.NOT_FOUND, `File not found: ${filename}`);
-        return;
-    }
+    const safeFilename = path.normalize(filename).replace(/^(\.\.(\/|\\|$))+/, '');
+const resolvedPath = path.resolve(RECEIPT_DIR, safeFilename);
+
+if (!resolvedPath.startsWith(RECEIPT_DIR)) {
+    sendError(session, CommandType.CMD_REQUEST_RECEIPT, StatusCode.BAD_REQUEST, 'Invalid file path');
+    return;
+}
 
     // STATE TRANSITION: -> TRANSFERRING_FILE
     transitionState(session, SessionState.TRANSFERRING_FILE, `CMD_REQUEST_RECEIPT file=${filename}`);
 
-    const stats = fs.statSync(filepath);
+    const stats = fs.statSync(resolvedPath);
     const fileSize = stats.size;
     logger.info(`Starting file transfer: ${filename} (${fileSize} bytes) to ${session.userEmail}`);
 
     // For WebSocket clients, send file as base64 chunks
     sendResponse(session, CommandType.CMD_FILE_HEADER, StatusCode.OK, { filename, size: fileSize });
 
-    const fileBuffer = fs.readFileSync(filepath);
+    const fileBuffer = fs.readFileSync(resolvedPath);
     let offset = 0;
     while (offset < fileSize) {
         const end = Math.min(offset + CHUNK_SIZE, fileSize);
