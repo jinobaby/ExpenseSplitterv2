@@ -30,9 +30,9 @@ export default function App() {
   const [expenseForm, setExpenseForm] = useState({ amount: "", description: "", splitWith: "" });
   const [groupForm, setGroupForm] = useState({ name: "" });
   const [joinForm, setJoinForm] = useState({ groupId: "" });
-  const [receiptFile, setReceiptFile] = useState("");
+  const [receiptFilename, setReceiptFilename] = useState("sample_receipt.jpg");
   const [downloadProgress, setDownloadProgress] = useState(null);
-  const [fileChunks, setFileChunks] = useState([]);
+  const [receivedChunks, setReceivedChunks] = useState([]);
   const wsRef = useRef(null);
 
   const showToast = (msg, type = "success") => {
@@ -115,7 +115,7 @@ export default function App() {
           if (status !== 200 && payload?.error) {
             showToast(payload.error, "error");
             setDownloadProgress(null);
-            setFileChunks([]);
+            setReceivedChunks([]);
           }
           break;
         case CMD.FILE_HEADER:
@@ -124,10 +124,10 @@ export default function App() {
             total: payload.size,
             received: 0,
           });
-          setFileChunks([]);
+          setReceivedChunks([]);
           break;
         case CMD.FILE_DATA:
-          setFileChunks((prev) => [...prev, payload.data]);
+          setReceivedChunks((prev) => [...prev, payload.data]);
           setDownloadProgress((prev) => {
             if (!prev) return prev;
             return {
@@ -138,7 +138,7 @@ export default function App() {
           break;
         case CMD.FILE_COMPLETE: {
           const fname = payload.filename || "receipt";
-          setFileChunks((chunks) => {
+          setReceivedChunks((chunks) => {
             const parts = chunks.map((b64) => {
               const bin = atob(b64);
               return Uint8Array.from(bin, (c) => c.charCodeAt(0));
@@ -176,7 +176,7 @@ export default function App() {
   const doAddExpense = () => send(CMD.ADD_EXPENSE, expenseForm);
 
   const doDownloadReceipt = () => {
-    const name = receiptFile.trim();
+    const name = receiptFilename.trim();
     if (!name) {
       showToast("Enter a filename", "error");
       return;
@@ -337,8 +337,8 @@ export default function App() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   <input
                     placeholder="Receipt filename (e.g. sample_receipt.jpg)"
-                    value={receiptFile}
-                    onChange={(e) => setReceiptFile(e.target.value)}
+                    value={receiptFilename}
+                    onChange={(e) => setReceiptFilename(e.target.value)}
                     style={{ ...inputStyle, flex: "1 1 200px", minWidth: 0 }}
                     onKeyDown={(e) => e.key === "Enter" && doDownloadReceipt()}
                   />
