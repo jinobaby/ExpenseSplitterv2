@@ -10,11 +10,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SettlementService = void 0;
 class SettlementService {
+    /**
+     * Needs expense math + auth for resolving emails to display names.
+     */
     constructor(expenseService, authService) {
         this.expenseService = expenseService;
         this.authService = authService;
     }
-    /** Get formatted settlement plan with display names */
+    /**
+     * Returns who should pay who as strings like "$12.34" with real names if we have them.
+     * Wraps computeSettlements from ExpenseService.
+     */
     getSettlementPlan(groupId, members) {
         const settlements = this.expenseService.computeSettlements(groupId, members);
         return settlements.map(s => {
@@ -29,7 +35,9 @@ class SettlementService {
             };
         });
     }
-    /** Get formatted balances with display names */
+    /**
+     * Per-person balance with a human readable display string (owes / is owed / settled).
+     */
     getFormattedBalances(groupId, members) {
         const balances = this.expenseService.computeBalances(groupId, members);
         const result = [];

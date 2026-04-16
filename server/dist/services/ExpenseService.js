@@ -14,6 +14,10 @@ class ExpenseService {
         this.expenses = [];
         this.nextId = 1;
     }
+    /**
+     * Push a new expense row. amountCents should already be integer cents (caller rounds).
+     * splitWith = who splits the bill (emails).
+     */
     addExpense(groupId, payer, amountCents, description, splitWith) {
         const expense = {
             id: this.nextId++,
@@ -27,10 +31,15 @@ class ExpenseService {
         this.expenses.push(expense);
         return expense;
     }
+    /** Filter expenses for one group id */
     getGroupExpenses(groupId) {
         return this.expenses.filter(e => e.groupId === groupId);
     }
-    /** Compute net balances for each group member (in cents) */
+    /**
+     * Figure out who owes who net — uses cents to avoid float weirdness.
+     * Credits payer with full amount, debits each splitter their share.
+     * Remainder cents get distributed one cent at a time to first k people (floor division).
+     */
     computeBalances(groupId, members) {
         const balances = new Map();
         // Initialize all members to 0
@@ -51,7 +60,10 @@ class ExpenseService {
         }
         return balances;
     }
-    /** Compute simplified settlement plan using greedy matching algorithm */
+    /**
+     * After balances, try to minimize number of transfers using greedy match
+     * (biggest debtor pays biggest creditor etc). Not guaranteed optimal but ok for class project.
+     */
     computeSettlements(groupId, members) {
         const balances = this.computeBalances(groupId, members);
         // Separate into debtors and creditors
@@ -87,6 +99,7 @@ class ExpenseService {
         }
         return settlements;
     }
+    /** Total expense rows stored — admin stats */
     getExpenseCount() {
         return this.expenses.length;
     }

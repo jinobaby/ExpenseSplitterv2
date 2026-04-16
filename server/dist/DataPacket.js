@@ -59,12 +59,13 @@ var StatusCode;
     StatusCode[StatusCode["ERROR"] = 500] = "ERROR";
 })(StatusCode || (exports.StatusCode = StatusCode = {}));
 /**
- * @class DataPacket
- * @brief Represents a complete data packet with header and dynamic payload.
- * @details The payload is a dynamically allocated Buffer (REQ-SYS-030),
- *          allowing variable-length data transmission.
+ * DataPacket — wraps our fixed header + variable payload for the wire format.
+ * Basically REQ-SYS-020/030 from the spec, nothing fancy.
  */
 class DataPacket {
+    /**
+     * Default ctor — empty payload, header starts as CMD_ERROR until we set real stuff.
+     */
     constructor() {
         this.header = {
             command: CommandType.CMD_ERROR,
@@ -75,25 +76,36 @@ class DataPacket {
         };
         this.payload = null;
     }
-    /** Set the payload from a string - allocates new Buffer dynamically */
+    /**
+     * Put string data in the payload (utf8). Updates payloadLength in header.
+     * @param data - usually key=value pairs for our protocol
+     */
     setPayload(data) {
         this.payload = Buffer.from(data, 'utf-8');
         this.header.payloadLength = this.payload.length;
     }
-    /** Set the payload from raw binary data */
+    /**
+     * Same as setPayload but if you already have a Buffer (binary).
+     * Copies bytes so we dont alias the original buffer.
+     * @param data - raw chunk
+     */
     setPayloadRaw(data) {
         this.payload = Buffer.alloc(data.length);
         data.copy(this.payload);
         this.header.payloadLength = this.payload.length;
     }
-    /** Get payload as string */
+    /**
+     * Read payload back as text. Returns "" if no payload / length 0.
+     */
     getPayloadString() {
         if (this.payload && this.header.payloadLength > 0) {
             return this.payload.toString('utf-8');
         }
         return '';
     }
-    /** Serialize to Buffer for TCP transmission */
+    /**
+     * Pack everything for TCP: 140 byte header + payload if any.
+     */
     serialize() {
         const headerBuf = Buffer.alloc(140);
         headerBuf.writeUInt16LE(this.header.command, 0);
@@ -106,7 +118,10 @@ class DataPacket {
         }
         return headerBuf;
     }
-    /** Deserialize from raw Buffer */
+    /**
+     * Unpack from socket bytes. Returns null if not enough data yet or corrupt.
+     * @param data - buffer from tcp read()
+     */
     static deserialize(data) {
         if (data.length < 140)
             return null;
@@ -124,7 +139,9 @@ class DataPacket {
         }
         return pkt;
     }
-    /** Convert to JSON for WebSocket transmission */
+    /**
+     * For JSON / websocket — not identical to binary format but good enough for logs.
+     */
     toJSON() {
         return {
             command: this.header.command,
@@ -133,7 +150,10 @@ class DataPacket {
             payload: this.getPayloadString(),
         };
     }
-    /** Create from JSON (WebSocket message) */
+    /**
+     * Build packet from parsed JSON (websocket side). Uses any bc client msg varies slightly.
+     * @param json - object from JSON.parse
+     */
     static fromJSON(json) {
         const pkt = new DataPacket();
         pkt.header.command = json.command;
@@ -145,18 +165,27 @@ class DataPacket {
         }
         return pkt;
     }
-    /** Get human-readable log string */
+    /**
+     * Debug string for logger — shows command name + status + len etc.
+     */
     toLogString() {
         const cmdName = CommandType[this.header.command] || `0x${this.header.command.toString(16)}`;
         return `[CMD=${cmdName} STATUS=${this.header.status} LEN=${this.header.payloadLength} FROM=${this.header.sender}]`;
     }
 }
 exports.DataPacket = DataPacket;
-/** Build a key=value payload string */
+/**
+ * Turn an object into key=value&key2=value2 string for TCP payload.
+ * @param pairs - plain string map
+ */
 function buildPayload(pairs) {
     return Object.entries(pairs).map(([k, v]) => `${k}=${v}`).join('&');
 }
-/** Parse a key=value payload string */
+/**
+ * Split key=value&... back into object. Empty string -> {}.
+ * Not real URL decoding, just splits on & and first =.
+ * @param payload - the payload part of the packet
+ */
 function parsePayload(payload) {
     const result = {};
     if (!payload)

@@ -95,7 +95,16 @@ export default function App() {
           } else { showToast(payload?.error, "error"); }
           break;
         case CMD.LEAVE_GROUP:
-          setCurrentGroup(null); setView("groups"); send(CMD.LIST_GROUPS); break;
+          if (Number(status) === 200) {
+            showToast(payload?.message || "You left the group");
+            setCurrentGroup(null);
+            setView("groups");
+            setMembers([]);
+            send(CMD.LIST_GROUPS);
+          } else {
+            showToast(payload?.error || "Could not leave group", "error");
+          }
+          break;
         case CMD.GROUP_MEMBERS:
           setMembers(payload.members || []); break;
         case CMD.ADD_EXPENSE:
@@ -171,7 +180,8 @@ export default function App() {
   const doCreateGroup = () => { send(CMD.CREATE_GROUP, groupForm); setGroupForm({ name: "" }); };
   const doJoinGroup = () => { send(CMD.JOIN_GROUP, joinForm); setJoinForm({ groupId: "" }); };
   const doSelectGroup = (id) => send(CMD.SELECT_GROUP, { groupId: id });
-  const doLeaveGroup = () => send(CMD.LEAVE_GROUP);
+  /** Removes you from the group; you must join again to come back */
+  const doQuitGroup = () => send(CMD.LEAVE_GROUP);
   const doLogout = () => send(CMD.LOGOUT);
   const doAddExpense = () => send(CMD.ADD_EXPENSE, expenseForm);
 
@@ -310,7 +320,7 @@ export default function App() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <div>
-                <button onClick={doLeaveGroup} style={{ ...btnStyle, background: "transparent", border: "none", color: "#6366f1", padding: 0, fontSize: 13, marginBottom: 4 }}>← Back to Groups</button>
+                <button type="button" onClick={doQuitGroup} style={{ ...btnStyle, background: "transparent", border: "1px solid #374151", color: "#9ca3af", padding: "6px 14px", fontSize: 13, marginBottom: 8 }}>Quit group</button>
                 <h1 style={{ fontSize: 24, fontWeight: 700 }}>{currentGroup.name}</h1>
               </div>
               <div style={{ display: "flex", gap: 8 }}>

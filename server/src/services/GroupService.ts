@@ -62,6 +62,21 @@ export class GroupService {
         return group ? group.members.has(email) : false;
     }
 
+    /**
+     * Remove user from the group permanently (they must join again to return).
+     * Deletes the group if nobody is left.
+     */
+    quitGroup(groupId: string, email: string): { success: boolean; message: string } {
+        const group = this.groups.get(groupId);
+        if (!group) return { success: false, message: 'Group not found' };
+        if (!group.members.has(email)) return { success: false, message: 'Not a member of this group' };
+        group.members.delete(email);
+        if (group.members.size === 0) {
+            this.groups.delete(groupId);
+        }
+        return { success: true, message: 'You left the group' };
+    }
+
     /** For admin dashboard — total groups */
     getGroupCount(): number {
         return this.groups.size;

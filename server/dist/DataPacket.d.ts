@@ -53,33 +53,62 @@ export interface PacketHeader {
     token: string;
 }
 /**
- * @class DataPacket
- * @brief Represents a complete data packet with header and dynamic payload.
- * @details The payload is a dynamically allocated Buffer (REQ-SYS-030),
- *          allowing variable-length data transmission.
+ * DataPacket — wraps our fixed header + variable payload for the wire format.
+ * Basically REQ-SYS-020/030 from the spec, nothing fancy.
  */
 export declare class DataPacket {
     header: PacketHeader;
     payload: Buffer | null;
+    /**
+     * Default ctor — empty payload, header starts as CMD_ERROR until we set real stuff.
+     */
     constructor();
-    /** Set the payload from a string - allocates new Buffer dynamically */
+    /**
+     * Put string data in the payload (utf8). Updates payloadLength in header.
+     * @param data - usually key=value pairs for our protocol
+     */
     setPayload(data: string): void;
-    /** Set the payload from raw binary data */
+    /**
+     * Same as setPayload but if you already have a Buffer (binary).
+     * Copies bytes so we dont alias the original buffer.
+     * @param data - raw chunk
+     */
     setPayloadRaw(data: Buffer): void;
-    /** Get payload as string */
+    /**
+     * Read payload back as text. Returns "" if no payload / length 0.
+     */
     getPayloadString(): string;
-    /** Serialize to Buffer for TCP transmission */
+    /**
+     * Pack everything for TCP: 140 byte header + payload if any.
+     */
     serialize(): Buffer;
-    /** Deserialize from raw Buffer */
+    /**
+     * Unpack from socket bytes. Returns null if not enough data yet or corrupt.
+     * @param data - buffer from tcp read()
+     */
     static deserialize(data: Buffer): DataPacket | null;
-    /** Convert to JSON for WebSocket transmission */
+    /**
+     * For JSON / websocket — not identical to binary format but good enough for logs.
+     */
     toJSON(): object;
-    /** Create from JSON (WebSocket message) */
+    /**
+     * Build packet from parsed JSON (websocket side). Uses any bc client msg varies slightly.
+     * @param json - object from JSON.parse
+     */
     static fromJSON(json: any): DataPacket;
-    /** Get human-readable log string */
+    /**
+     * Debug string for logger — shows command name + status + len etc.
+     */
     toLogString(): string;
 }
-/** Build a key=value payload string */
+/**
+ * Turn an object into key=value&key2=value2 string for TCP payload.
+ * @param pairs - plain string map
+ */
 export declare function buildPayload(pairs: Record<string, string>): string;
-/** Parse a key=value payload string */
+/**
+ * Split key=value&... back into object. Empty string -> {}.
+ * Not real URL decoding, just splits on & and first =.
+ * @param payload - the payload part of the packet
+ */
 export declare function parsePayload(payload: string): Record<string, string>;

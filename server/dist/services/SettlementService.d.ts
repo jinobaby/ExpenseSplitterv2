@@ -11,14 +11,22 @@ import { AuthService } from './AuthService';
 export declare class SettlementService {
     private expenseService;
     private authService;
+    /**
+     * Needs expense math + auth for resolving emails to display names.
+     */
     constructor(expenseService: ExpenseService, authService: AuthService);
-    /** Get formatted settlement plan with display names */
+    /**
+     * Returns who should pay who as strings like "$12.34" with real names if we have them.
+     * Wraps computeSettlements from ExpenseService.
+     */
     getSettlementPlan(groupId: string, members: Set<string>): {
         from: string;
         to: string;
         amount: string;
     }[];
-    /** Get formatted balances with display names */
+    /**
+     * Per-person balance with a human readable display string (owes / is owed / settled).
+     */
     getFormattedBalances(groupId: string, members: Set<string>): {
         name: string;
         email: string;

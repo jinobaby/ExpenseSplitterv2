@@ -214,17 +214,21 @@ function handleSelectGroup(session: ClientSession, params: any): void {
     });
 }
 
-/** CMD_LEAVE_GROUP — clear group context, back to IDLE */
+/** CMD_LEAVE_GROUP — remove user from group membership; clear session; back to IDLE */
 function handleLeaveGroup(session: ClientSession): void {
-    if (session.state !== SessionState.IN_GROUP && session.state !== SessionState.PROCESSING_EXPENSE) {
-        sendError(session, CommandType.CMD_LEAVE_GROUP, StatusCode.BAD_REQUEST, 'Not in a group context');
+    if (!session.currentGroupId) {
+        sendError(session, CommandType.CMD_LEAVE_GROUP, StatusCode.BAD_REQUEST, 'No group selected');
         return;
     }
     const prev = session.currentGroupId;
+    const result = groupService.quitGroup(prev, session.userEmail);
+    if (!result.success) {
+        sendError(session, CommandType.CMD_LEAVE_GROUP, StatusCode.BAD_REQUEST, result.message);
+        return;
+    }
     session.currentGroupId = '';
-    // STATE TRANSITION: -> IDLE
-    transitionState(session, SessionState.IDLE, `CMD_LEAVE_GROUP from ${prev}`);
-    sendResponse(session, CommandType.CMD_LEAVE_GROUP, StatusCode.OK, { message: 'Left group context' });
+    transitionState(session, SessionState.IDLE, `CMD_LEAVE_GROUP quit ${prev}`);
+    sendResponse(session, CommandType.CMD_LEAVE_GROUP, StatusCode.OK, { message: result.message });
 }
 
 /** CMD_GROUP_MEMBERS — needs a group selected first */
