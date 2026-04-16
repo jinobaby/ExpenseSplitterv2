@@ -13,3 +13,30 @@
 [2026-04-14 21:11:48] [STATE] IN_GROUP -> IDLE (trigger: CMD_LEAVE_GROUP from grp_1 [user=jino@test.com])
 [2026-04-14 21:16:59] [INFO] WebSocket client connected: ws_2
 [2026-04-14 21:17:05] [INFO] User logged in: jino@test.com (ws_2)
+[2026-04-16 03:30:45] [INFO] === Expense Splitter Server ===
+[2026-04-16 03:30:45] [INFO] TCP server listening on port 54000
+[2026-04-16 03:30:45] [INFO] WebSocket bridge listening on port 54001
+[2026-04-16 03:30:45] [INFO] Receipt directory: D:\PROJECTS\PROJ IV\ExpenseSplitter-TS\server\receipts
+[2026-04-16 03:30:45] [INFO] Demo users: jino@test.com, yashika@test.com, alice@test.com, bob@test.com (pass: pass123)
+[2026-04-16 03:33:14] [INFO] WebSocket client connected: ws_1
+[2026-04-16 03:33:14] [INFO] WebSocket client connected: ws_2
+[2026-04-16 03:33:28] [INFO] User registered: sreyas@test.com
+[2026-04-16 03:33:42] [INFO] User logged in: sreyas@test.com (ws_2)
+[2026-04-16 03:34:21] [INFO] User logged in: jino@test.com (ws_1)
+[2026-04-16 03:34:41] [INFO] Group created: Uber eats (grp_1) by jino@test.com
+[2026-04-16 03:34:42] [STATE] IDLE -> IN_GROUP (trigger: CMD_SELECT_GROUP groupId=grp_1 [user=jino@test.com])
+[2026-04-16 03:34:49] [INFO] sreyas@test.com joined Uber eats
+[2026-04-16 03:34:50] [STATE] IDLE -> IN_GROUP (trigger: CMD_SELECT_GROUP groupId=grp_1 [user=sreyas@test.com])
+[2026-04-16 03:34:59] [STATE] IN_GROUP -> PROCESSING_EXPENSE (trigger: CMD_ADD_EXPENSE [user=sreyas@test.com])
+[2026-04-16 03:34:59] [INFO] Expense added: $30.00 by sreyas@test.com in grp_1
+[2026-04-16 03:34:59] [STATE] PROCESSING_EXPENSE -> IN_GROUP (trigger: ADD_EXPENSE_COMPLETE id=1 [user=sreyas@test.com])
+[2026-04-16 03:36:04] [INFO] WebSocket client connected: ws_3
+[2026-04-16 03:36:05] [INFO] WebSocket client connected: ws_4
+[2026-04-16 03:36:27] [INFO] User logged in: jino@test.com (ws_4)
+[2026-04-16 03:36:50] [INFO] WebSocket client disconnected: ws_3 ()
+[2026-04-16 03:36:53] [INFO] WebSocket client connected: ws_5
+[2026-04-16 03:37:03] [INFO] User logged in: yashika@test.com (ws_5)
+[2026-04-16 03:37:08] [INFO] yashika@test.com joined Uber eats
+[2026-04-16 03:37:09] [STATE] IDLE -> IN_GROUP (trigger: CMD_SELECT_GROUP groupId=grp_1 [user=yashika@test.com])
+[2026-04-16 03:54:18] [INFO] WebSocket client disconnected: ws_4 (jino@test.com)
+[2026-04-16 03:54:18] [INFO] WebSocket client connected: ws_6
