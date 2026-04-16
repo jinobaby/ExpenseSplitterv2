@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const WS_URL = "ws://localhost:54001";
+const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:54001";
 
 // Command types matching server
 const CMD = {
@@ -73,7 +73,16 @@ export default function App() {
           else { showToast(payload?.error || "Registration failed", "error"); }
           break;
         case CMD.LOGOUT:
-          setUser(null); setCurrentGroup(null); setView("login"); showToast("Logged out"); break;
+          setUser(null);
+  setCurrentGroup(null);
+  setGroups([]);
+  setExpenses([]);
+  setBalances([]);
+  setSettlements([]);
+  setMembers([]);
+  setView("login");
+  showToast("Successfully logged out");
+  break;
         case CMD.CREATE_GROUP:
           if (status === 201) { showToast(`Group "${payload.name}" created (${payload.groupId})`); send(CMD.LIST_GROUPS); }
           else { showToast(payload?.error, "error"); }
