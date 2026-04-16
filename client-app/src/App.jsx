@@ -195,6 +195,17 @@ export default function App() {
   const doJoinGroup = () => { send(CMD.JOIN_GROUP, joinForm); setJoinForm({ groupId: "" }); };
   const doSelectGroup = (id) => send(CMD.SELECT_GROUP, { groupId: id });
   const doLeaveGroup = () => send(CMD.LEAVE_GROUP);
+  const doBackToGroups = () => {
+    setCurrentGroup(null);
+    setExpenses([]);
+    setBalances([]);
+    setSettlements([]);
+    setMembers([]);
+    setSelectedSplitMembers([]);
+    setSelectedBalanceEmail(null);
+    setView("groups");
+    send(CMD.LIST_GROUPS);
+  };
   const doLogout = () => send(CMD.LOGOUT);
   const doAddExpense = () => {
     const amount = Number.parseFloat(expenseForm.amount || "0");
