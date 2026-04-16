@@ -30,6 +30,9 @@ export default function App() {
   const [expenseForm, setExpenseForm] = useState({ amount: "", description: "", splitWith: "" });
   const [groupForm, setGroupForm] = useState({ name: "" });
   const [joinForm, setJoinForm] = useState({ groupId: "" });
+  const [receiptFile, setReceiptFile] = useState("");
+  const [downloadProgress, setDownloadProgress] = useState(null);
+  const [fileChunks, setFileChunks] = useState([]);
   const wsRef = useRef(null);
 
   const showToast = (msg, type = "success") => {
@@ -108,6 +111,53 @@ export default function App() {
           setBalances(payload.balances || []); break;
         case CMD.GET_SETTLEMENTS:
           setSettlements(payload.settlements || []); break;
+        case CMD.REQUEST_RECEIPT:
+          if (status !== 200 && payload?.error) {
+            showToast(payload.error, "error");
+            setDownloadProgress(null);
+            setFileChunks([]);
+          }
+          break;
+        case CMD.FILE_HEADER:
+          setDownloadProgress({
+            filename: payload.filename,
+            total: payload.size,
+            received: 0,
+          });
+          setFileChunks([]);
+          break;
+        case CMD.FILE_DATA:
+          setFileChunks((prev) => [...prev, payload.data]);
+          setDownloadProgress((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              received: prev.received + (payload.size || 0),
+            };
+          });
+          break;
+        case CMD.FILE_COMPLETE: {
+          const fname = payload.filename || "receipt";
+          setFileChunks((chunks) => {
+            const parts = chunks.map((b64) => {
+              const bin = atob(b64);
+              return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+            });
+            const blob = new Blob(parts);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fname;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`Downloaded ${fname}`);
+            setTimeout(() => setDownloadProgress(null), 3000);
+            return [];
+          });
+          break;
+        }
         case CMD.ERROR:
           showToast(payload?.error || "Server error", "error"); break;
       }
@@ -124,6 +174,15 @@ export default function App() {
   const doLeaveGroup = () => send(CMD.LEAVE_GROUP);
   const doLogout = () => send(CMD.LOGOUT);
   const doAddExpense = () => send(CMD.ADD_EXPENSE, expenseForm);
+
+  const doDownloadReceipt = () => {
+    const name = receiptFile.trim();
+    if (!name) {
+      showToast("Enter a filename", "error");
+      return;
+    }
+    send(CMD.REQUEST_RECEIPT, { filename: name });
+  };
 
   const formatCents = (cents) => {
     const abs = Math.abs(cents);
@@ -268,6 +327,42 @@ export default function App() {
                 <input placeholder="$0.00" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} style={inputStyle} />
                 <input placeholder="What was it for?" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} style={inputStyle} onKeyDown={e => e.key === "Enter" && doAddExpense()} />
                 <button onClick={doAddExpense} style={{ ...btnStyle, background: "#6366f1" }}>Add</button>
+              </div>
+            </div>
+
+            {/* Receipts */}
+            <div style={{ ...cardStyle, marginBottom: 24 }}>
+              <h3 style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>Receipts</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <input
+                    placeholder="Receipt filename (e.g. sample_receipt.jpg)"
+                    value={receiptFile}
+                    onChange={(e) => setReceiptFile(e.target.value)}
+                    style={{ ...inputStyle, flex: "1 1 200px", minWidth: 0 }}
+                    onKeyDown={(e) => e.key === "Enter" && doDownloadReceipt()}
+                  />
+                  <button type="button" onClick={doDownloadReceipt} style={{ ...btnStyle, background: "#6366f1" }}>
+                    Download
+                  </button>
+                </div>
+                {downloadProgress && (
+                  <div>
+                    <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 6 }}>
+                      {downloadProgress.filename} — {downloadProgress.received} / {downloadProgress.total} bytes
+                    </div>
+                    <div style={{ height: 8, background: "#1e1e2e", borderRadius: 4, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          width: `${downloadProgress.total ? Math.min(100, (downloadProgress.received / downloadProgress.total) * 100) : 0}%`,
+                          height: "100%",
+                          background: "linear-gradient(90deg, #6366f1, #8b5cf6)",
+                          transition: "width 0.15s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
