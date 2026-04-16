@@ -95,14 +95,15 @@ export default function App() {
           } else { showToast(payload?.error, "error"); }
           break;
         case CMD.LEAVE_GROUP:
-          if (Number(status) === 200) {
-            showToast(payload?.message || "You left the group");
+          if (status === 200) {
             setCurrentGroup(null);
-            setView("groups");
+            setExpenses([]);
+            setBalances([]);
+            setSettlements([]);
             setMembers([]);
+            setView("groups");
+            showToast("Left group");
             send(CMD.LIST_GROUPS);
-          } else {
-            showToast(payload?.error || "Could not leave group", "error");
           }
           break;
         case CMD.GROUP_MEMBERS:
@@ -180,8 +181,7 @@ export default function App() {
   const doCreateGroup = () => { send(CMD.CREATE_GROUP, groupForm); setGroupForm({ name: "" }); };
   const doJoinGroup = () => { send(CMD.JOIN_GROUP, joinForm); setJoinForm({ groupId: "" }); };
   const doSelectGroup = (id) => send(CMD.SELECT_GROUP, { groupId: id });
-  /** Removes you from the group; you must join again to come back */
-  const doQuitGroup = () => send(CMD.LEAVE_GROUP);
+  const doLeaveGroup = () => send(CMD.LEAVE_GROUP);
   const doLogout = () => send(CMD.LOGOUT);
   const doAddExpense = () => send(CMD.ADD_EXPENSE, expenseForm);
 
@@ -318,12 +318,14 @@ export default function App() {
         {/* GROUP DETAIL */}
         {view === "group" && currentGroup && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
               <div>
-                <button type="button" onClick={doQuitGroup} style={{ ...btnStyle, background: "transparent", border: "1px solid #374151", color: "#9ca3af", padding: "6px 14px", fontSize: 13, marginBottom: 8 }}>Quit group</button>
+                <button onClick={doLeaveGroup} style={{ ...btnStyle, background: "transparent", border: "none", color: "#6366f1", padding: 0, fontSize: 13, marginBottom: 4, cursor: "pointer" }}>
+                  ← Leave Group
+                </button>
                 <h1 style={{ fontSize: 24, fontWeight: 700 }}>{currentGroup.name}</h1>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", maxWidth: 400, justifyContent: "flex-end" }}>
                 {members.map(m => (
                   <div key={m.email} style={{ padding: "4px 12px", borderRadius: 20, background: "#1e1e2e", fontSize: 12, color: "#9ca3af" }}>{m.name}</div>
                 ))}
