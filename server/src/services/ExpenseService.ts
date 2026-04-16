@@ -60,20 +60,20 @@ export class ExpenseService {
     computeBalances(groupId: string, members: Set<string>): Map<string, number> {
         const balances = new Map<string, number>();
 
-        // Initialize all members to 0
+        // Net balance per email: positive => should receive money, negative => owes, 0 => even
         members.forEach(m => balances.set(m, 0));
 
-        // Process each expense
         for (const e of this.expenses) {
             if (e.groupId !== groupId || e.splitWith.length === 0) continue;
 
+            // Split total cents across splitWith; integer division leaves a remainder of 0..(n-1) cents
             const sharePerPerson = Math.floor(e.amountCents / e.splitWith.length);
             const remainder = e.amountCents - (sharePerPerson * e.splitWith.length);
 
-            // Credit the payer
+            // Payer laid out the full cost upfront → their net should increase by that amount
             balances.set(e.payer, (balances.get(e.payer) || 0) + e.amountCents);
 
-            // Debit each participant
+            // Each person in splitWith owes their share; give the extra remainder cents to the first `remainder` people (index order)
             e.splitWith.forEach((member, i) => {
                 const share = sharePerPerson + (i < remainder ? 1 : 0);
                 balances.set(member, (balances.get(member) || 0) - share);
@@ -90,7 +90,7 @@ export class ExpenseService {
     computeSettlements(groupId: string, members: Set<string>): Settlement[] {
         const balances = this.computeBalances(groupId, members);
 
-        // Separate into debtors and creditors
+        // Owes money (balance < 0) vs should receive (balance > 0); use positive magnitudes only below
         const debtors: { email: string; amount: number }[] = [];
         const creditors: { email: string; amount: number }[] = [];
 
@@ -99,14 +99,14 @@ export class ExpenseService {
             else if (balance > 0) creditors.push({ email, amount: balance });
         });
 
-        // Sort descending by amount
+        // Match largest obligations first (greedy heuristic)
         debtors.sort((a, b) => b.amount - a.amount);
         creditors.sort((a, b) => b.amount - a.amount);
 
-        // Greedy matching
         const settlements: Settlement[] = [];
         let di = 0, ci = 0;
 
+        // Pair current biggest debtor with current biggest creditor; transfer min of the two remaining amounts, then advance pointers when one side is settled
         while (di < debtors.length && ci < creditors.length) {
             const amount = Math.min(debtors[di].amount, creditors[ci].amount);
             if (amount > 0) {

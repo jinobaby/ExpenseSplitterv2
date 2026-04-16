@@ -31,6 +31,7 @@ export class SettlementService {
         return settlements.map(s => {
             const fromUser = this.authService.getUser(s.from);
             const toUser = this.authService.getUser(s.to);
+            // amountCents → $whole.cents (two-digit cents, zero-padded)
             const dollars = Math.floor(s.amountCents / 100);
             const cents = s.amountCents % 100;
             return {
@@ -53,6 +54,7 @@ export class SettlementService {
             const absCents = Math.abs(cents);
             const dollars = Math.floor(absCents / 100);
             const remainder = absCents % 100;
+            // Sign/label follow net balance from computeBalances (credit vs debit)
             const sign = cents >= 0 ? '+' : '-';
             const label = cents > 0 ? 'is owed' : cents < 0 ? 'owes' : 'settled';
             result.push({
