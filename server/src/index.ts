@@ -287,6 +287,10 @@ function handleListExpenses(session: ClientSession): void {
     const expenses = expenseService.getGroupExpenses(session.currentGroupId);
     const formatted = expenses.map(e => {
         const user = authService.getUser(e.payer);
+        const splitWithNames = e.splitWith.map(email => {
+            const splitUser = authService.getUser(email);
+            return splitUser?.name || email;
+        });
         return {
             id: e.id,
             payer: user?.name || e.payer,
@@ -294,6 +298,8 @@ function handleListExpenses(session: ClientSession): void {
             amountCents: e.amountCents,
             amount: `$${(e.amountCents / 100).toFixed(2)}`,
             description: e.description,
+            splitWith: e.splitWith,
+            splitWithNames,
         };
     });
     sendResponse(session, CommandType.CMD_LIST_EXPENSES, StatusCode.OK, { count: formatted.length, expenses: formatted });
