@@ -81,7 +81,7 @@ export default function App() {
   setSettlements([]);
   setMembers([]);
   setView("login");
-  showToast("Logged out");
+  showToast("Successfully logged out");
   break;
         case CMD.CREATE_GROUP:
           if (status === 201) { showToast(`Group "${payload.name}" created (${payload.groupId})`); send(CMD.LIST_GROUPS); }
