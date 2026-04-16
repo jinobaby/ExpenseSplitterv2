@@ -73,7 +73,16 @@ export default function App() {
           else { showToast(payload?.error || "Registration failed", "error"); }
           break;
         case CMD.LOGOUT:
-          setUser(null); setCurrentGroup(null); setView("login"); showToast("Logged out"); break;
+          setUser(null);
+  setCurrentGroup(null);
+  setGroups([]);
+  setExpenses([]);
+  setBalances([]);
+  setSettlements([]);
+  setMembers([]);
+  setView("login");
+  showToast("Logged out");
+  break;
         case CMD.CREATE_GROUP:
           if (status === 201) { showToast(`Group "${payload.name}" created (${payload.groupId})`); send(CMD.LIST_GROUPS); }
           else { showToast(payload?.error, "error"); }
