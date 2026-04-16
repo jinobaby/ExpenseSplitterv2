@@ -270,6 +270,29 @@ function handleAddExpense(session: ClientSession, params: any): void {
         const group = groupService.getGroup(session.currentGroupId);
         if (group) splitWith = Array.from(group.members);
     }
+    const group = groupService.getGroup(session.currentGroupId);
+
+if (!group) {
+    transitionState(session, SessionState.IN_GROUP, 'ADD_EXPENSE_FAILED');
+    sendError(session, CommandType.CMD_ADD_EXPENSE, StatusCode.BAD_REQUEST, 'Group not found');
+    return;
+}
+
+// Validate each user in splitWith
+for (const email of splitWith) {
+    if (!group.members.has(email)) {
+        transitionState(session, SessionState.IN_GROUP, 'ADD_EXPENSE_FAILED');
+        sendError(session, CommandType.CMD_ADD_EXPENSE, StatusCode.BAD_REQUEST, 'Invalid group member');
+        return;
+    }
+}
+
+// Validate payer
+if (!group.members.has(session.userEmail)) {
+    transitionState(session, SessionState.IN_GROUP, 'ADD_EXPENSE_FAILED');
+    sendError(session, CommandType.CMD_ADD_EXPENSE, StatusCode.BAD_REQUEST, 'Invalid payer');
+    return;
+}
 
     const expense = expenseService.addExpense(session.currentGroupId, session.userEmail, cents, description, splitWith);
     logger.info(`Expense added: $${(cents / 100).toFixed(2)} by ${session.userEmail} in ${session.currentGroupId}`);
