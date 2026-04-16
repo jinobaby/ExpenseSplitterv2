@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const WS_URL = "ws://localhost:54001";
+const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:54001";
 
 // Command types matching server
 const CMD = {
