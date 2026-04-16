@@ -69,6 +69,12 @@ let sessionCounter = 0;
 // State transition helper
 // ============================================================================
 
+/**
+ * Updates session.state and logs it — used whenever REQ-SYS-060 says we transition.
+ * @param session - whose state
+ * @param newState - where we're going
+ * @param trigger - why (usually command name + details for debugging)
+ */
 function transitionState(session: ClientSession, newState: SessionState, trigger: string): void {
     const from = session.state;
     session.state = newState;
@@ -79,6 +85,10 @@ function transitionState(session: ClientSession, newState: SessionState, trigger
 // Send response helpers
 // ============================================================================
 
+/**
+ * Low level send — websocket gets JSON string, TCP gets serialized DataPacket.
+ * @param data - should have command, status, payload fields (kinda loose)
+ */
 function sendToSession(session: ClientSession, data: any): void {
     if (session.type === 'ws' && session.wsSocket && session.wsSocket.readyState === WebSocket.OPEN) {
         session.wsSocket.send(JSON.stringify(data));
@@ -94,10 +104,12 @@ function sendToSession(session: ClientSession, data: any): void {
     }
 }
 
+/** Wrapper around sendToSession for success-ish responses */
 function sendResponse(session: ClientSession, command: CommandType, status: StatusCode, payload: any): void {
     sendToSession(session, { command, status, payload });
 }
 
+/** Error payload always { error: message } */
 function sendError(session: ClientSession, command: CommandType, status: StatusCode, message: string): void {
     sendResponse(session, command, status, { error: message });
 }
@@ -106,6 +118,10 @@ function sendError(session: ClientSession, command: CommandType, status: StatusC
 // Command Handlers
 // ============================================================================
 
+/**
+ * CMD_LOGIN — checks password, fills session if good. Not a state transition per spec.
+ * @param params - email, password from payload
+ */
 function handleLogin(session: ClientSession, params: any): void {
     const email = params.email || '';
     const password = params.password || '';
@@ -129,6 +145,7 @@ function handleLogin(session: ClientSession, params: any): void {
     });
 }
 
+/** CMD_REGISTER — new account, params need email password name */
 function handleRegister(session: ClientSession, params: any): void {
     const result = authService.register(params.email || '', params.password || '', params.name || '');
     if (!result.success) {
@@ -139,6 +156,7 @@ function handleRegister(session: ClientSession, params: any): void {
     sendResponse(session, CommandType.CMD_REGISTER, StatusCode.CREATED, { message: result.message });
 }
 
+/** CMD_LOGOUT — clears session fields and resets state to IDLE */
 function handleLogout(session: ClientSession): void {
     logger.info(`User logged out: ${session.userEmail}`);
     session.authenticated = false;
@@ -149,6 +167,7 @@ function handleLogout(session: ClientSession): void {
     sendResponse(session, CommandType.CMD_LOGOUT, StatusCode.OK, { message: 'Logged out' });
 }
 
+/** CMD_CREATE_GROUP — params.name required */
 function handleCreateGroup(session: ClientSession, params: any): void {
     if (!params.name) { sendError(session, CommandType.CMD_CREATE_GROUP, StatusCode.BAD_REQUEST, 'Missing group name'); return; }
     const group = groupService.createGroup(params.name, session.userEmail);
@@ -158,6 +177,7 @@ function handleCreateGroup(session: ClientSession, params: any): void {
     });
 }
 
+/** CMD_JOIN_GROUP — params.groupId */
 function handleJoinGroup(session: ClientSession, params: any): void {
     const result = groupService.joinGroup(params.groupId || '', session.userEmail);
     if (!result.success) { sendError(session, CommandType.CMD_JOIN_GROUP, StatusCode.NOT_FOUND, result.message); return; }
@@ -167,6 +187,7 @@ function handleJoinGroup(session: ClientSession, params: any): void {
     });
 }
 
+/** CMD_LIST_GROUPS — groups current user belongs to */
 function handleListGroups(session: ClientSession): void {
     const groups = groupService.getUserGroups(session.userEmail);
     sendResponse(session, CommandType.CMD_LIST_GROUPS, StatusCode.OK, {
@@ -175,6 +196,9 @@ function handleListGroups(session: ClientSession): void {
     });
 }
 
+/**
+ * CMD_SELECT_GROUP — sets currentGroupId + transitions to IN_GROUP if member.
+ */
 function handleSelectGroup(session: ClientSession, params: any): void {
     const groupId = params.groupId || '';
     if (!groupService.isMember(groupId, session.userEmail)) {
@@ -190,6 +214,7 @@ function handleSelectGroup(session: ClientSession, params: any): void {
     });
 }
 
+/** CMD_LEAVE_GROUP — clear group context, back to IDLE */
 function handleLeaveGroup(session: ClientSession): void {
     if (session.state !== SessionState.IN_GROUP && session.state !== SessionState.PROCESSING_EXPENSE) {
         sendError(session, CommandType.CMD_LEAVE_GROUP, StatusCode.BAD_REQUEST, 'Not in a group context');
@@ -202,6 +227,7 @@ function handleLeaveGroup(session: ClientSession): void {
     sendResponse(session, CommandType.CMD_LEAVE_GROUP, StatusCode.OK, { message: 'Left group context' });
 }
 
+/** CMD_GROUP_MEMBERS — needs a group selected first */
 function handleGroupMembers(session: ClientSession): void {
     if (!session.currentGroupId) { sendError(session, CommandType.CMD_GROUP_MEMBERS, StatusCode.BAD_REQUEST, 'No group selected'); return; }
     const group = groupService.getGroup(session.currentGroupId);
@@ -213,6 +239,10 @@ function handleGroupMembers(session: ClientSession): void {
     sendResponse(session, CommandType.CMD_GROUP_MEMBERS, StatusCode.OK, { count: members.length, members });
 }
 
+/**
+ * CMD_ADD_EXPENSE — amount, description, optional splitWith comma list.
+ * Goes PROCESSING_EXPENSE then back to IN_GROUP.
+ */
 function handleAddExpense(session: ClientSession, params: any): void {
     if (!session.currentGroupId) { sendError(session, CommandType.CMD_ADD_EXPENSE, StatusCode.BAD_REQUEST, 'No group selected'); return; }
 
@@ -247,6 +277,7 @@ function handleAddExpense(session: ClientSession, params: any): void {
     });
 }
 
+/** CMD_LIST_EXPENSES — formatted list for current group */
 function handleListExpenses(session: ClientSession): void {
     if (!session.currentGroupId) { sendError(session, CommandType.CMD_LIST_EXPENSES, StatusCode.BAD_REQUEST, 'No group selected'); return; }
     const expenses = expenseService.getGroupExpenses(session.currentGroupId);
@@ -264,6 +295,7 @@ function handleListExpenses(session: ClientSession): void {
     sendResponse(session, CommandType.CMD_LIST_EXPENSES, StatusCode.OK, { count: formatted.length, expenses: formatted });
 }
 
+/** CMD_GET_BALANCES — uses SettlementService formatting */
 function handleGetBalances(session: ClientSession): void {
     if (!session.currentGroupId) { sendError(session, CommandType.CMD_GET_BALANCES, StatusCode.BAD_REQUEST, 'No group selected'); return; }
     const group = groupService.getGroup(session.currentGroupId)!;
@@ -271,6 +303,7 @@ function handleGetBalances(session: ClientSession): void {
     sendResponse(session, CommandType.CMD_GET_BALANCES, StatusCode.OK, { count: balances.length, balances });
 }
 
+/** CMD_GET_SETTLEMENTS — who pays who simplified */
 function handleGetSettlements(session: ClientSession): void {
     if (!session.currentGroupId) { sendError(session, CommandType.CMD_GET_SETTLEMENTS, StatusCode.BAD_REQUEST, 'No group selected'); return; }
     const group = groupService.getGroup(session.currentGroupId)!;
@@ -278,6 +311,10 @@ function handleGetSettlements(session: ClientSession): void {
     sendResponse(session, CommandType.CMD_GET_SETTLEMENTS, StatusCode.OK, { count: settlements.length, settlements });
 }
 
+/**
+ * CMD_REQUEST_RECEIPT — reads file from receipts folder, streams chunks as CMD_FILE_DATA.
+ * Kinda blocks the event loop bc sync fs (would fix in real app).
+ */
 function handleRequestReceipt(session: ClientSession, params: any): void {
     const filename = params.filename || '';
     if (!filename) { sendError(session, CommandType.CMD_REQUEST_RECEIPT, StatusCode.BAD_REQUEST, 'Missing filename'); return; }
@@ -322,6 +359,7 @@ function handleRequestReceipt(session: ClientSession, params: any): void {
     }
 }
 
+/** CMD_ADMIN_STATUS — counts for dashboard */
 function handleAdminStatus(session: ClientSession): void {
     sendResponse(session, CommandType.CMD_ADMIN_STATUS, StatusCode.OK, {
         clients: sessions.size,
@@ -331,11 +369,13 @@ function handleAdminStatus(session: ClientSession): void {
     });
 }
 
+/** CMD_ADMIN_LOGS — tail of in-memory log lines */
 function handleAdminLogs(session: ClientSession): void {
     const entries = logger.getRecentEntries(30);
     sendResponse(session, CommandType.CMD_ADMIN_LOGS, StatusCode.OK, { logs: entries });
 }
 
+/** CMD_ADMIN_SESSIONS — list connected clients snapshot */
 function handleAdminSessions(session: ClientSession): void {
     const sessionList = Array.from(sessions.values()).map(s => ({
         id: s.id,
@@ -348,6 +388,7 @@ function handleAdminSessions(session: ClientSession): void {
     sendResponse(session, CommandType.CMD_ADMIN_SESSIONS, StatusCode.OK, { count: sessionList.length, sessions: sessionList });
 }
 
+/** CMD_ADMIN_STATES — session state per user for debugging */
 function handleAdminStates(session: ClientSession): void {
     const states = Array.from(sessions.values()).map(s => ({
         user: s.authenticated ? (s.userName || s.userEmail) : 'anonymous',
@@ -360,6 +401,10 @@ function handleAdminStates(session: ClientSession): void {
 // Command Router
 // ============================================================================
 
+/**
+ * Main dispatch — checks auth except login/register, then switch on command type.
+ * @param params - parsed payload (key=value or from json)
+ */
 function processCommand(session: ClientSession, command: CommandType, params: any): void {
     // Auth check (REQ-SYS-080) — only LOGIN and REGISTER allowed without auth
     if (!session.authenticated && command !== CommandType.CMD_LOGIN && command !== CommandType.CMD_REGISTER) {
@@ -394,6 +439,10 @@ function processCommand(session: ClientSession, command: CommandType, params: an
 // TCP Server (REQ-COM-010)
 // ============================================================================
 
+/**
+ * Raw TCP server — buffers until full packets (140 + payload), then deserialize + processCommand.
+ * Each socket gets its own ClientSession in the sessions map.
+ */
 const tcpServer = net.createServer((socket) => {
     const sessionId = `tcp_${++sessionCounter}_${socket.remoteAddress}:${socket.remotePort}`;
     const session: ClientSession = {
@@ -440,6 +489,9 @@ const tcpServer = net.createServer((socket) => {
 // WebSocket Bridge (for React clients)
 // ============================================================================
 
+/**
+ * WS on 54001 — messages are JSON with { command, payload }. Easier for React than binary TCP.
+ */
 const wsServer = new WebSocketServer({ port: WS_PORT });
 
 wsServer.on('connection', (ws: WebSocket) => {
@@ -475,7 +527,7 @@ wsServer.on('connection', (ws: WebSocket) => {
 // Start
 // ============================================================================
 
-// Create receipts directory
+// Make sure receipt upload folder exists on startup
 if (!fs.existsSync(RECEIPT_DIR)) {
     fs.mkdirSync(RECEIPT_DIR, { recursive: true });
 }

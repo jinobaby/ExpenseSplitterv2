@@ -29,6 +29,10 @@ export class ExpenseService {
     private expenses: ExpenseRecord[] = [];
     private nextId: number = 1;
 
+    /**
+     * Push a new expense row. amountCents should already be integer cents (caller rounds).
+     * splitWith = who splits the bill (emails).
+     */
     addExpense(groupId: string, payer: string, amountCents: number, description: string, splitWith: string[]): ExpenseRecord {
         const expense: ExpenseRecord = {
             id: this.nextId++,
@@ -43,11 +47,16 @@ export class ExpenseService {
         return expense;
     }
 
+    /** Filter expenses for one group id */
     getGroupExpenses(groupId: string): ExpenseRecord[] {
         return this.expenses.filter(e => e.groupId === groupId);
     }
 
-    /** Compute net balances for each group member (in cents) */
+    /**
+     * Figure out who owes who net — uses cents to avoid float weirdness.
+     * Credits payer with full amount, debits each splitter their share.
+     * Remainder cents get distributed one cent at a time to first k people (floor division).
+     */
     computeBalances(groupId: string, members: Set<string>): Map<string, number> {
         const balances = new Map<string, number>();
 
@@ -74,7 +83,10 @@ export class ExpenseService {
         return balances;
     }
 
-    /** Compute simplified settlement plan using greedy matching algorithm */
+    /**
+     * After balances, try to minimize number of transfers using greedy match
+     * (biggest debtor pays biggest creditor etc). Not guaranteed optimal but ok for class project.
+     */
     computeSettlements(groupId: string, members: Set<string>): Settlement[] {
         const balances = this.computeBalances(groupId, members);
 
@@ -113,6 +125,7 @@ export class ExpenseService {
         return settlements;
     }
 
+    /** Total expense rows stored — admin stats */
     getExpenseCount(): number {
         return this.expenses.length;
     }

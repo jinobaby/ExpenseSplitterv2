@@ -14,6 +14,9 @@ export interface UserAccount {
 export class AuthService {
     private users: Map<string, UserAccount> = new Map();
 
+    /**
+     * In-memory user store. Seeds a few demo accounts for testing the assignment.
+     */
     constructor() {
         // Pre-populate demo users
         this.users.set('jino@test.com', { email: 'jino@test.com', password: 'pass123', name: 'Jino' });
@@ -22,6 +25,10 @@ export class AuthService {
         this.users.set('bob@test.com', { email: 'bob@test.com', password: 'pass123', name: 'Bob' });
     }
 
+    /**
+     * Register new user. Fails if missing fields or email already exists.
+     * Password is stored plain text rn (not secure, just for the project demo).
+     */
     register(email: string, password: string, name: string): { success: boolean; message: string } {
         if (!email || !password || !name) {
             return { success: false, message: 'Missing email, password, or name' };
@@ -33,6 +40,10 @@ export class AuthService {
         return { success: true, message: 'Registration successful' };
     }
 
+    /**
+     * Check email/password and if ok return a fake token string + display name.
+     * Token is basically random-ish string, not a real JWT or anything.
+     */
     login(email: string, password: string): { success: boolean; token?: string; name?: string; message: string } {
         const user = this.users.get(email);
         if (!user || user.password !== password) {
@@ -42,10 +53,14 @@ export class AuthService {
         return { success: true, token, name: user.name, message: 'Login successful' };
     }
 
+    /**
+     * Lookup user by email for showing names in groups / expenses.
+     */
     getUser(email: string): UserAccount | undefined {
         return this.users.get(email);
     }
 
+    /** How many users in the map — used by admin status */
     getUserCount(): number {
         return this.users.size;
     }

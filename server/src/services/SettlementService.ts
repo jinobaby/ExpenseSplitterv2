@@ -14,12 +14,18 @@ export class SettlementService {
     private expenseService: ExpenseService;
     private authService: AuthService;
 
+    /**
+     * Needs expense math + auth for resolving emails to display names.
+     */
     constructor(expenseService: ExpenseService, authService: AuthService) {
         this.expenseService = expenseService;
         this.authService = authService;
     }
 
-    /** Get formatted settlement plan with display names */
+    /**
+     * Returns who should pay who as strings like "$12.34" with real names if we have them.
+     * Wraps computeSettlements from ExpenseService.
+     */
     getSettlementPlan(groupId: string, members: Set<string>): { from: string; to: string; amount: string }[] {
         const settlements = this.expenseService.computeSettlements(groupId, members);
         return settlements.map(s => {
@@ -35,7 +41,9 @@ export class SettlementService {
         });
     }
 
-    /** Get formatted balances with display names */
+    /**
+     * Per-person balance with a human readable display string (owes / is owed / settled).
+     */
     getFormattedBalances(groupId: string, members: Set<string>): { name: string; email: string; balanceCents: number; display: string }[] {
         const balances = this.expenseService.computeBalances(groupId, members);
         const result: { name: string; email: string; balanceCents: number; display: string }[] = [];
